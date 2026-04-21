@@ -1,46 +1,68 @@
 import os
-from dotenv import load_dotenv
-import requests
-import pandas as pd
+import time
+import random
+from stock import get_stocks, calculate_date
+from monthly import monthly
+from situations import situation
+from tutorial import tutorial
+from gamestate import state
 
-load_dotenv()
+def check_bankrupt():
+    if state.available_cash <= 0:
+        print("You went bankrupt! You lose. Be more careful next time")
+        raise SystemExit
 
-API_KEY = os.getenv("ALPHA_KEY")
+def gameloop():
+    for month in range(60):
+        state.available_cash = round(state.available_cash, 2)
+        print(f"--- Month {state.months_since_start + 1} ---")
+        num_of_situations = random.randint(1, 2)
+        for _ in range(num_of_situations):
+            random_situation = random.randint(1, 14)
+            situation(random_situation)
+            time.sleep(.1)
 
-def get_stock_data(symbol):
+        monthly()
+        check_bankrupt()
+        time.sleep(.1)
+        state.update_cash()
+        os.system('clear')
 
-    url = f"https://www.alphavantage.co/query?function=TIME_SERIES_MONTHLY_ADJUSTED&symbol={symbol}&apikey={API_KEY}"
-    r = requests.get(url)
-    data = r.json()
-    
-    data = data["Monthly Adjusted Time Series"]
-    stock_data = []
-    for timestamp, values in data.items():
-        close_price = values.get("4. close")
+    win_screen()
 
-        stock_data.append({
-            "symbol": symbol,
-            "timestamp": timestamp,
-            "close": close_price
-        })
-    return stock_data
+def win_screen():
+    print("You survived for 1 year!")
+    print("You made it!")
+    print("\nThis is what you ended with:")
+    print(f"    Your house: {state.house}")
+    print(f"    Your car: {state.car}")
+    
 
-def generate_csv():
-    stocks = {"NVDA": 0, "TSLA": 0, "AAPL": 0, "INTC": 0, "AMZN": 0}
+    if state.pets:
+        pets_str = ', '.join(state.pets)
+        print(f"    You own: {pets_str}.")
+    else:
+        print("    You did not own any pets.")
     
-    all_stock_data = []
-    for symbol in stocks.keys():
-        stock_data = get_stock_data(symbol)
-        all_stock_data.extend(stock_data)
+    if state.stocks_owned:
+        stocks_str = ', '.join([f"{qty} shares of {symbol}" for symbol, qty in state.stocks_owned.items()])
+        print(f"    You own: {stocks_str}.")
+    else:
+        print("    You did not own any stocks.")
     
-    df = pd.DataFrame(all_stock_data)
+    print(f"\nYour final lifestyle points were: {state.points}.")
+    if state.points > 200:
+        print("You lived an incredible and lavish life! You were incredibly rich!")
+    elif state.points > 100:
+        print("You lived a great and comfortable life!")
+    elif state.points > 50:
+        print("You lived an above average life.")
+    else:
+        print("You lived a life full of frugality and savings. Great job for saving your money.")
     
-    df = df[["symbol", "timestamp", "close"]]
-    
-    print(df)
-    
-    csv_filename = "stock_prices.csv"
-    df.to_csv(csv_filename, index=False)
+    raise SystemExit
 
 if __name__ == "__main__":
-    generate_csv()
+    tutorial()
+    
+    gameloop()
